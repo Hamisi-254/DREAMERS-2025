@@ -1,0 +1,1000 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eFootball Ultimate Manager & 2D Live Match Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            brand: ['Teko', 'sans-serif'],
+            sans: ['Rajdhani', 'sans-serif'],
+          },
+          colors: {
+            efootball: {
+              cyan: '#00f2fe',
+              magenta: '#4facfe',
+              neonPink: '#ff007f',
+              gold: '#ffd700',
+              purple: '#7928ca',
+              darkBg: '#080d1a',
+              cardBg: '#111827'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Card Rarity Glow Effects */
+    .card-epic {
+      background: linear-gradient(135deg, #1f1402 0%, #3d2c06 50%, #1a1200 100%);
+      border: 2px solid #ffd700;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+    .card-booster {
+      background: linear-gradient(135deg, #1e0038 0%, #4a0072 50%, #0d001a 100%);
+      border: 2px solid #e040fb;
+      box-shadow: 0 0 15px rgba(224, 64, 251, 0.5);
+    }
+    .card-highlight {
+      background: linear-gradient(135deg, #00223e 0%, #1d976c 100%);
+      border: 2px solid #00f2fe;
+      box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+    }
+    .card-standard {
+      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+      border: 1px solid #374151;
+    }
+
+    /* Pitch Grid Styles */
+    .pitch-lines {
+      background-image: linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00f2fe; }
+  </style>
+</head>
+<body class="bg-[#060913] text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden selection:bg-efootball-cyan selection:text-black">
+
+  <!-- TOP HEADER / NAVBAR -->
+  <header class="border-b border-slate-800 bg-[#0a0f1d]/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-efootball-neonPink to-efootball-cyan p-0.5 shadow-lg shadow-cyan-500/20">
+          <div class="w-full h-full bg-[#080d1a] rounded-[7px] flex items-center justify-center font-brand font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-efootball-cyan to-efootball-gold">
+            eF
+          </div>
+        </div>
+        <div>
+          <h1 class="font-brand text-2xl tracking-wider text-white leading-none">eFOOTBALL <span class="text-efootball-cyan">ULTIMATE MANAGER</span></h1>
+          <p class="text-[11px] text-slate-400 font-medium">Tactical Dream Team & 2D Live Match Simulator</p>
+        </div>
+      </div>
+
+      <!-- NAV TABS -->
+      <nav class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+        <button id="tab-squad" onclick="switchTab('squad')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-efootball-cyan to-blue-600 text-black shadow">
+          ⚽ SQUAD & DREAM TEAM
+        </button>
+        <button id="tab-match" onclick="switchTab('match')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white">
+          🏟 LIVE 2D MATCH
+        </button>
+        <button id="tab-tactics" onclick="switchTab('tactics')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white">
+          📋 TACTICS & MAPPING
+        </button>
+      </nav>
+
+      <!-- AUDIO CONTROLS -->
+      <div class="flex items-center space-x-2">
+        <button id="btn-audio" onclick="toggleAudio()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 flex items-center gap-1.5 transition">
+          <span id="audio-status">🔊 SOUND: ON</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN BODY CONTENT -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-3 md:p-6 flex flex-col space-y-4">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: SQUAD BUILDER & DREAM TEAM SYSTEM -->
+    <!-- ========================================== -->
+    <section id="sec-squad" class="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- LEFT / TOP: PITCH VIEW & SQUAD POSITIONS (7 COLS) -->
+      <div class="lg:col-span-7 flex flex-col space-y-4">
+        
+        <!-- Tactical Setup Header -->
+        <div class="bg-[#0d1424] border border-slate-800 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <span class="text-xs text-slate-400 block font-mono">TEAM PLAYSTYLE</span>
+            <select id="playstyle-select" onchange="updatePlaystyle(this.value)" class="bg-slate-900 border border-slate-700 text-efootball-cyan font-bold text-sm rounded px-3 py-1 focus:outline-none">
+              <option value="Possession Game">Possession Game (+Stat Control)</option>
+              <option value="Quick Counter" selected>Quick Counter (+Speed Burst)</option>
+              <option value="Out Wide">Out Wide (+Crossing Precision)</option>
+              <option value="Long Ball Counter">Long Ball Counter (+Defense Shield)</option>
+            </select>
+          </div>
+
+          <div>
+            <span class="text-xs text-slate-400 block font-mono">FORMATION</span>
+            <select id="formation-select" onchange="changeFormation(this.value)" class="bg-slate-900 border border-slate-700 text-efootball-gold font-bold text-sm rounded px-3 py-1 focus:outline-none">
+              <option value="4-3-3">4-3-3 Attacking</option>
+              <option value="4-2-3-1">4-2-3-1 Modern</option>
+              <option value="4-4-2">4-4-2 Classic</option>
+              <option value="3-5-2">3-5-2 Wingback</option>
+              <option value="5-3-2">5-3-2 Defensive</option>
+            </select>
+          </div>
+
+          <div class="text-right">
+            <span class="text-xs text-slate-400 block font-mono">TEAM STRENGTH</span>
+            <span id="team-rating" class="font-brand text-2xl text-efootball-cyan leading-none">2,890</span>
+          </div>
+        </div>
+
+        <!-- Interactive Squad Pitch Canvas View -->
+        <div class="bg-[#0d1424] border border-slate-800 rounded-xl p-4 relative min-h-[480px] flex items-center justify-center overflow-hidden pitch-lines shadow-2xl">
+          <!-- Pitch Grass Visual -->
+          <div class="absolute inset-2 border-2 border-slate-700/60 rounded-lg pointer-events-none">
+            <div class="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-700/60 -translate-y-1/2"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-2 border-slate-700/60 rounded-full"></div>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 border-b-2 border-x-2 border-slate-700/60"></div>
+            <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-20 border-t-2 border-x-2 border-slate-700/60"></div>
+          </div>
+
+          <!-- Dynamic Slots for Players on Pitch -->
+          <div id="pitch-slots-container" class="absolute inset-0 p-6 flex flex-col justify-between">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Substitutes Bench -->
+        <div class="bg-[#0d1424] border border-slate-800 rounded-xl p-3">
+          <span class="text-xs text-slate-400 font-mono block mb-2">SUBSTITUTES BENCH</span>
+          <div id="bench-container" class="flex gap-2 overflow-x-auto pb-1">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT / BOTTOM: PLAYER CARD INSPECTOR & PROGRESSION ALLOCATOR (5 COLS) -->
+      <div class="lg:col-span-5 flex flex-col space-y-4">
+        
+        <!-- Active Selected Player Card Details -->
+        <div class="bg-[#0d1424] border border-slate-800 rounded-xl p-5 flex flex-col space-y-4 shadow-xl">
+          <div id="card-display" class="card-epic rounded-xl p-4 relative text-white flex flex-col space-y-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <span id="inspect-rarity" class="text-[10px] uppercase font-bold tracking-widest text-efootball-gold bg-black/40 px-2 py-0.5 rounded">EPIC BOOSTER</span>
+                <h2 id="inspect-name" class="font-brand text-3xl font-bold leading-none mt-1">L. MESSI</h2>
+                <span id="inspect-pos" class="text-xs font-mono text-efootball-cyan font-bold">RWF | ARGENTINA</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-300 block font-mono">OVERALL</span>
+                <span id="inspect-ovr" class="font-brand text-4xl text-efootball-gold leading-none font-bold">102</span>
+              </div>
+            </div>
+
+            <!-- Stats Mini Matrix -->
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-black/40 p-3 rounded-lg border border-white/10">
+              <div class="flex justify-between"><span>Speed:</span><b id="inspect-speed" class="text-efootball-cyan">94</b></div>
+              <div class="flex justify-between"><span>Dribbling:</span><b id="inspect-dribble" class="text-efootball-cyan">98</b></div>
+              <div class="flex justify-between"><span>Passing:</span><b id="inspect-pass" class="text-efootball-cyan">92</b></div>
+              <div class="flex justify-between"><span>Shooting:</span><b id="inspect-shoot" class="text-efootball-cyan">96</b></div>
+              <div class="flex justify-between"><span>Defending:</span><b id="inspect-def" class="text-slate-400">42</b></div>
+              <div class="flex justify-between"><span>Stamina:</span><b id="inspect-stamina" class="text-efootball-gold">88</b></div>
+            </div>
+
+            <!-- Skill Boosters Tag -->
+            <div class="flex items-center space-x-2 text-xs font-mono">
+              <span class="text-slate-400">SPECIAL SKILLS:</span>
+              <span id="inspect-skills" class="text-efootball-gold font-bold">Double Touch, Stunning Strike, Blitz Curler</span>
+            </div>
+          </div>
+
+          <!-- Progression Points Allocator -->
+          <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+              <h3 class="font-brand text-lg text-efootball-cyan">PROGRESSION POINTS ALLOCATOR</h3>
+              <span class="text-xs font-mono text-slate-400">AVAILABLE: <b id="progression-pts" class="text-efootball-gold">12</b> PTS</span>
+            </div>
+
+            <div class="space-y-2 text-xs font-mono">
+              <div class="flex items-center justify-between">
+                <span>Shooting & Finishing</span>
+                <div class="flex items-center space-x-2">
+                  <button onclick="allocateStat('shoot', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">-</button>
+                  <span id="pts-shoot" class="w-6 text-center text-white font-bold">0</span>
+                  <button onclick="allocateStat('shoot', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">+</button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span>Dribbling & Ball Control</span>
+                <div class="flex items-center space-x-2">
+                  <button onclick="allocateStat('dribble', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">-</button>
+                  <span id="pts-dribble" class="w-6 text-center text-white font-bold">0</span>
+                  <button onclick="allocateStat('dribble', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">+</button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span>Dexterity & Speed Burst</span>
+                <div class="flex items-center space-x-2">
+                  <button onclick="allocateStat('speed', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">-</button>
+                  <span id="pts-speed" class="w-6 text-center text-white font-bold">0</span>
+                  <button onclick="allocateStat('speed', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">+</button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span>Passing & Vision</span>
+                <div class="flex items-center space-x-2">
+                  <button onclick="allocateStat('pass', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">-</button>
+                  <span id="pts-pass" class="w-6 text-center text-white font-bold">0</span>
+                  <button onclick="allocateStat('pass', 1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded font-bold">+</button>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="resetProgression()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono text-slate-300 rounded transition">
+              Reset Progression Points
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: REAL-TIME 2D LIVE MATCH ENGINE -->
+    <!-- ========================================== -->
+    <section id="sec-match" class="hidden flex-grow flex flex-col space-y-4">
+      
+      <!-- Top Match Header / Live Scoreboard -->
+      <div class="bg-[#0d1424] border border-slate-800 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4">
+        
+        <!-- Home Team Badge & Score -->
+        <div class="flex items-center space-x-4">
+          <div class="w-10 h-10 bg-gradient-to-tr from-red-600 to-amber-500 rounded-full flex items-center justify-center font-brand font-bold text-lg shadow-lg">
+            DREAM
+          </div>
+          <div>
+            <h3 class="font-brand text-xl text-white leading-none">DREAM XI</h3>
+            <span class="text-[11px] text-efootball-cyan font-mono">HOME TEAM</span>
+          </div>
+          <span id="match-score-home" class="font-brand text-4xl text-efootball-gold px-3">0</span>
+        </div>
+
+        <!-- Clock & Game Speed Controller -->
+        <div class="flex flex-col items-center space-y-1">
+          <span id="match-clock" class="font-mono text-2xl font-bold text-efootball-cyan tracking-widest bg-slate-950 px-4 py-1 rounded border border-slate-800">00:00</span>
+          <div class="flex items-center space-x-2">
+            <button id="btn-speed-1" onclick="setSpeed(1)" class="px-2 py-0.5 text-xs font-mono bg-efootball-cyan text-black rounded font-bold">1x</button>
+            <button id="btn-speed-2" onclick="setSpeed(2)" class="px-2 py-0.5 text-xs font-mono bg-slate-800 text-slate-400 rounded hover:text-white">2x</button>
+            <button id="btn-speed-4" onclick="setSpeed(4)" class="px-2 py-0.5 text-xs font-mono bg-slate-800 text-slate-400 rounded hover:text-white">4x</button>
+          </div>
+        </div>
+
+        <!-- Away Team Badge & Score -->
+        <div class="flex items-center space-x-4">
+          <span id="match-score-away" class="font-brand text-4xl text-efootball-gold px-3">0</span>
+          <div class="text-right">
+            <h3 class="font-brand text-xl text-white leading-none">KONAMI STARS</h3>
+            <span class="text-[11px] text-blue-400 font-mono">AWAY TEAM</span>
+          </div>
+          <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-full flex items-center justify-center font-brand font-bold text-lg shadow-lg">
+            KNS
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Main Pitch Canvas Area & Live Commentary Panel -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-grow">
+        
+        <!-- Pitch Canvas Container (8 COLS) -->
+        <div class="lg:col-span-8 bg-[#070b14] border-2 border-slate-800 rounded-xl p-2 relative flex flex-col justify-center items-center overflow-hidden min-h-[480px]">
+          
+          <!-- Live Possession Indicator Overlay Bar -->
+          <div class="absolute top-4 left-6 right-6 z-10 flex items-center space-x-2 bg-slate-950/80 p-2 rounded-lg border border-slate-800 font-mono text-xs">
+            <span class="text-red-400 font-bold">POSSESSION:</span>
+            <div class="flex-grow bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
+              <div id="bar-poss-home" class="bg-red-500 h-full transition-all duration-300" style="width: 50%;"></div>
+              <div id="bar-poss-away" class="bg-blue-500 h-full transition-all duration-300" style="width: 50%;"></div>
+            </div>
+            <span id="text-poss" class="text-slate-300">50% - 50%</span>
+          </div>
+
+          <canvas id="matchCanvas" class="w-full h-full block rounded touch-none"></canvas>
+
+          <!-- Match Control Trigger Floating Bar -->
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur border border-slate-700 px-4 py-2 rounded-xl flex items-center space-x-3 shadow-2xl">
+            <button id="btn-match-play" onclick="toggleMatchPlay()" class="px-4 py-1.5 bg-gradient-to-r from-efootball-cyan to-blue-600 hover:brightness-110 text-black font-brand text-lg font-bold rounded shadow transition">
+              ▶ START KICKOFF
+            </button>
+            <button onclick="triggerTacticalIntervention()" class="px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/50 text-yellow-300 font-mono text-xs rounded transition">
+              ⚡ STUNNING SHOT
+            </button>
+            <button onclick="resetMatchEngine()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs rounded transition">
+              ↺ Reset Match
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Commentary Ticker & Match Log (4 COLS) -->
+        <div class="lg:col-span-4 bg-[#0d1424] border border-slate-800 rounded-xl p-4 flex flex-col space-y-3">
+          <h3 class="font-brand text-xl text-efootball-gold border-b border-slate-800 pb-1">LIVE MATCH FEED</h3>
+          
+          <div id="match-commentary" class="flex-grow bg-slate-950 border border-slate-800 rounded-lg p-3 font-mono text-xs space-y-2 overflow-y-auto max-h-[380px]">
+            <p class="text-slate-500 italic">[00:00] Pitch conditions are optimal. Click "START KICKOFF" to simulate live action!</p>
+          </div>
+
+          <!-- Real-Time Match Stats Table -->
+          <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5 font-mono text-xs">
+            <span class="text-slate-400 block border-b border-slate-800 pb-1 font-bold">STATISTICS SUMMARY</span>
+            <div class="flex justify-between text-slate-300"><span>Shots on Target:</span><span id="stat-shots">0 - 0</span></div>
+            <div class="flex justify-between text-slate-300"><span>Successful Passes:</span><span id="stat-passes">0 - 0</span></div>
+            <div class="flex justify-between text-slate-300"><span>Tackles Won:</span><span id="stat-tackles">0 - 0</span></div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: TACTICAL BOARD & CONTROLLER MAPPING -->
+    <!-- ========================================== -->
+    <section id="sec-tactics" class="hidden flex-grow grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- Interactive Freehand Tactical Drawing Canvas (7 COLS) -->
+      <div class="lg:col-span-7 bg-[#0d1424] border border-slate-800 rounded-xl p-4 flex flex-col space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <h2 class="font-brand text-2xl text-efootball-cyan">TACTICAL DRAWING BOARD</h2>
+          
+          <div class="flex items-center space-x-2">
+            <button onclick="setDrawColor('#ffd700')" class="w-6 h-6 rounded-full bg-yellow-400 border border-white focus:ring-2"></button>
+            <button onclick="setDrawColor('#00f2fe')" class="w-6 h-6 rounded-full bg-cyan-400 border border-white focus:ring-2"></button>
+            <button onclick="setDrawColor('#ff007f')" class="w-6 h-6 rounded-full bg-pink-500 border border-white focus:ring-2"></button>
+            <button onclick="clearDrawBoard()" class="px-3 py-1 bg-red-900/40 hover:bg-red-900/60 text-red-300 border border-red-800 text-xs font-mono rounded">
+              Clear Pitch
+            </button>
+          </div>
+        </div>
+
+        <div class="relative flex-grow bg-emerald-950/40 rounded-xl border border-slate-800 overflow-hidden min-h-[400px]">
+          <canvas id="drawingCanvas" class="w-full h-full block touch-none cursor-crosshair"></canvas>
+        </div>
+      </div>
+
+      <!-- Gamepad & Mobile Touch Controls Mapping Guide (5 COLS) -->
+      <div class="lg:col-span-5 bg-[#0d1424] border border-slate-800 rounded-xl p-5 flex flex-col space-y-4">
+        <h2 class="font-brand text-2xl text-efootball-gold border-b border-slate-800 pb-2">CONTROLLER & TOUCH MAPPING</h2>
+        
+        <div class="space-y-3 font-mono text-xs">
+          <!-- Action Item 1 -->
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <b class="text-efootball-cyan block text-sm">STUNNING SHOT / PASS</b>
+              <span class="text-slate-400">Triggers high-power driven curl or blast</span>
+            </div>
+            <div class="text-right bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-200">
+              R2 / RT + Shoot
+            </div>
+          </div>
+
+          <!-- Action Item 2 -->
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <b class="text-efootball-gold block text-sm">MATCH-UP DEFENDING</b>
+              <span class="text-slate-400">Jockey movement to block passing lanes</span>
+            </div>
+            <div class="text-right bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-200">
+              L2 / LT (Hold)
+            </div>
+          </div>
+
+          <!-- Action Item 3 -->
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <b class="text-efootball-neonPink block text-sm">DASH DRIBBLE & SHIFT</b>
+              <span class="text-slate-400">Explosive touch to bypass defender</span>
+            </div>
+            <div class="text-right bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-200">
+              R1 / RB (Double Tap)
+            </div>
+          </div>
+
+          <!-- Action Item 4 -->
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+            <div>
+              <b class="text-emerald-400 block text-sm">PHYSICAL SHOULDER CHARGE</b>
+              <span class="text-slate-400">Body check opponent to regain ball</span>
+            </div>
+            <div class="text-right bg-slate-950 px-3 py-1.5 rounded border border-slate-800 text-slate-200">
+              Square / X (Near Ball)
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-400 space-y-1">
+          <span class="text-efootball-gold font-bold block">💡 MOBILE TOUCHSCREEN TIP:</span>
+          <p>For mobile devices, swipe on the right side of the screen while holding the Left Virtual Stick to execute a Stunning Kick or Sharp Touch!</p>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT APPLICATION CODE -->
+  <script>
+    /* ==========================================
+       1. WEB AUDIO SYNTHESIZER FOR SOUND EFFECTS
+       ========================================== */
+    class AudioSynthesizer {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+      }
+
+      playWhistle() {
+        if (this.muted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(2800, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.4);
+      }
+
+      playKick() {
+        if (this.muted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.08);
+      }
+
+      playGoalCheer() {
+        if (this.muted || !this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 1.5;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
+        noise.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start();
+      }
+    }
+
+    const soundEngine = new AudioSynthesizer();
+
+    function toggleAudio() {
+      soundEngine.init();
+      soundEngine.muted = !soundEngine.muted;
+      document.getElementById('audio-status').textContent = soundEngine.muted ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+    }
+
+    /* ==========================================
+       2. TAB NAVIGATION
+       ========================================== */
+    function switchTab(tab) {
+      soundEngine.init();
+      const secSquad = document.getElementById('sec-squad');
+      const secMatch = document.getElementById('sec-match');
+      const secTactics = document.getElementById('sec-tactics');
+
+      const tabSquad = document.getElementById('tab-squad');
+      const tabMatch = document.getElementById('tab-match');
+      const tabTactics = document.getElementById('tab-tactics');
+
+      const inactiveStyle = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white";
+      const activeStyle = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-efootball-cyan to-blue-600 text-black shadow";
+
+      secSquad.classList.add('hidden');
+      secMatch.classList.add('hidden');
+      secTactics.classList.add('hidden');
+
+      tabSquad.className = inactiveStyle;
+      tabMatch.className = inactiveStyle;
+      tabTactics.className = inactiveStyle;
+
+      if (tab === 'squad') {
+        secSquad.classList.remove('hidden');
+        tabSquad.className = activeStyle;
+      } else if (tab === 'match') {
+        secMatch.classList.remove('hidden');
+        tabMatch.className = activeStyle;
+        matchEngine.initCanvas();
+      } else if (tab === 'tactics') {
+        secTactics.classList.remove('hidden');
+        tabTactics.className = activeStyle;
+        tacticalBoard.initCanvas();
+      }
+    }
+
+    /* ==========================================
+       3. SQUAD BUILDER & PLAYER DATABASE SYSTEM
+       ========================================== */
+    const playerDatabase = [
+      { id: 'p1', name: 'L. MESSI', pos: 'RWF', ovr: 102, speed: 94, dribble: 98, pass: 92, shoot: 96, def: 42, stamina: 88, rarity: 'card-epic', skills: 'Double Touch, Blitz Curler', pts: 12 },
+      { id: 'p2', name: 'K. MBAPPÉ', pos: 'LWF', ovr: 100, speed: 99, dribble: 93, pass: 84, shoot: 94, def: 38, stamina: 90, rarity: 'card-booster', skills: 'Speed Burst, Knuckle Shot', pts: 10 },
+      { id: 'p3', name: 'E. HAALAND', pos: 'CF', ovr: 99, speed: 92, dribble: 82, pass: 75, shoot: 98, def: 45, stamina: 86, rarity: 'card-highlight', skills: 'Acrobatic Finishing', pts: 8 },
+      { id: 'p4', name: 'K. DE BRUYNE', pos: 'AMF', ovr: 98, speed: 78, dribble: 89, pass: 98, shoot: 88, def: 65, stamina: 87, rarity: 'card-epic', skills: 'Weighted Pass, Pinpoint Crossing', pts: 10 },
+      { id: 'p5', name: 'RODRI', pos: 'DMF', ovr: 97, speed: 75, dribble: 84, pass: 92, shoot: 78, def: 94, stamina: 95, rarity: 'card-standard', skills: 'Interception, Blocker', pts: 6 },
+      { id: 'p6', name: 'J. BELLINGHAM', pos: 'CMF', ovr: 98, speed: 86, dribble: 90, pass: 88, shoot: 86, def: 82, stamina: 94, rarity: 'card-booster', skills: 'Box-to-Box, Sole Control', pts: 12 },
+      { id: 'p7', name: 'A. ROBERTSON', pos: 'LB', ovr: 94, speed: 88, dribble: 80, pass: 86, shoot: 68, def: 88, stamina: 96, rarity: 'card-standard', skills: 'Pinpoint Crossing', pts: 5 },
+      { id: 'p8', name: 'V. VAN DIJK', pos: 'CB', ovr: 97, speed: 82, dribble: 72, pass: 80, shoot: 60, def: 98, stamina: 88, rarity: 'card-epic', skills: 'Aerial Superiority', pts: 8 },
+      { id: 'p9', name: 'R. DIAS', pos: 'CB', ovr: 95, speed: 78, dribble: 68, pass: 76, shoot: 55, def: 96, stamina: 86, rarity: 'card-standard', skills: 'Blocker, Man Marking', pts: 6 },
+      { id: 'p10', name: 'T. ALEXANDER-ARNOLD', pos: 'RB', ovr: 95, speed: 85, dribble: 84, pass: 95, shoot: 78, def: 78, stamina: 88, rarity: 'card-highlight', skills: 'Curled Cross', pts: 8 },
+      { id: 'p11', name: 'M. NEUER', pos: 'GK', ovr: 96, speed: 65, dribble: 60, pass: 78, shoot: 30, def: 92, stamina: 75, rarity: 'card-epic', skills: 'Offensive GK, Long Throw', pts: 6 }
+    ];
+
+    let activePlayer = playerDatabase[0];
+    let allocatedPts = { shoot: 0, dribble: 0, speed: 0, pass: 0 };
+
+    const formationSlots = {
+      '4-3-3': [
+        { role: 'GK', top: '85%', left: '48%' },
+        { role: 'LB', top: '68%', left: '15%' }, { role: 'CB', top: '72%', left: '36%' }, { role: 'CB', top: '72%', left: '60%' }, { role: 'RB', top: '68%', left: '81%' },
+        { role: 'DMF', top: '50%', left: '48%' }, { role: 'CMF', top: '42%', left: '28%' }, { role: 'CMF', top: '42%', left: '68%' },
+        { role: 'LWF', top: '18%', left: '18%' }, { role: 'CF', top: '12%', left: '48%' }, { role: 'RWF', top: '18%', left: '78%' }
+      ],
+      '4-2-3-1': [
+        { role: 'GK', top: '85%', left: '48%' },
+        { role: 'LB', top: '68%', left: '15%' }, { role: 'CB', top: '72%', left: '36%' }, { role: 'CB', top: '72%', left: '60%' }, { role: 'RB', top: '68%', left: '81%' },
+        { role: 'DMF', top: '54%', left: '34%' }, { role: 'DMF', top: '54%', left: '62%' },
+        { role: 'LMF', top: '32%', left: '18%' }, { role: 'AMF', top: '30%', left: '48%' }, { role: 'RMF', top: '32%', left: '78%' },
+        { role: 'CF', top: '12%', left: '48%' }
+      ]
+    };
+
+    function renderPitchSquad() {
+      const container = document.getElementById('pitch-slots-container');
+      container.innerHTML = '';
+
+      const currentSlots = formationSlots['4-3-3'];
+      playerDatabase.forEach((player, idx) => {
+        const slot = currentSlots[idx] || { top: '50%', left: '50%' };
+        const card = document.createElement('div');
+        card.className = `absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition transform hover:scale-110 flex flex-col items-center`;
+        card.style.top = slot.top;
+        card.style.left = slot.left;
+        card.onclick = () => inspectPlayer(player);
+
+        card.innerHTML = `
+          <div class="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-efootball-cyan bg-slate-900 flex items-center justify-center font-brand font-bold text-sm text-efootball-gold shadow-lg">
+            ${player.ovr}
+          </div>
+          <span class="bg-black/80 px-2 py-0.5 rounded text-[10px] font-mono text-white font-bold mt-1 border border-slate-700 whitespace-nowrap">
+            ${player.name}
+          </span>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function inspectPlayer(player) {
+      activePlayer = player;
+      document.getElementById('inspect-name').textContent = player.name;
+      document.getElementById('inspect-pos').textContent = `${player.pos} | STAR`;
+      document.getElementById('inspect-ovr').textContent = player.ovr;
+      document.getElementById('inspect-speed').textContent = player.speed + allocatedPts.speed;
+      document.getElementById('inspect-dribble').textContent = player.dribble + allocatedPts.dribble;
+      document.getElementById('inspect-pass').textContent = player.pass + allocatedPts.pass;
+      document.getElementById('inspect-shoot').textContent = player.shoot + allocatedPts.shoot;
+      document.getElementById('inspect-def').textContent = player.def;
+      document.getElementById('inspect-stamina').textContent = player.stamina;
+      document.getElementById('inspect-skills').textContent = player.skills;
+
+      const cardDisplay = document.getElementById('card-display');
+      cardDisplay.className = `${player.rarity} rounded-xl p-4 relative text-white flex flex-col space-y-3`;
+    }
+
+    function allocateStat(stat, dir) {
+      if (dir > 0 && activePlayer.pts > 0) {
+        allocatedPts[stat]++;
+        activePlayer.pts--;
+      } else if (dir < 0 && allocatedPts[stat] > 0) {
+        allocatedPts[stat]--;
+        activePlayer.pts++;
+      }
+      document.getElementById('progression-pts').textContent = activePlayer.pts;
+      document.getElementById(`pts-${stat}`).textContent = allocatedPts[stat];
+      inspectPlayer(activePlayer);
+    }
+
+    function resetProgression() {
+      activePlayer.pts += (allocatedPts.shoot + allocatedPts.dribble + allocatedPts.speed + allocatedPts.pass);
+      allocatedPts = { shoot: 0, dribble: 0, speed: 0, pass: 0 };
+      document.getElementById('progression-pts').textContent = activePlayer.pts;
+      ['shoot', 'dribble', 'speed', 'pass'].forEach(s => document.getElementById(`pts-${s}`).textContent = 0);
+      inspectPlayer(activePlayer);
+    }
+
+    function changeFormation(val) {
+      renderPitchSquad();
+    }
+
+    function updatePlaystyle(val) {
+      // Updates style dynamics
+    }
+
+    /* ==========================================
+       4. REAL-TIME 2D LIVE MATCH ENGINE
+       ========================================== */
+    class LiveMatchEngine {
+      constructor() {
+        this.canvas = document.getElementById('matchCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.isRunning = false;
+        this.speed = 1;
+
+        this.timer = 0; // seconds
+        this.scoreHome = 0;
+        this.scoreAway = 0;
+
+        this.possHome = 50;
+        this.possAway = 50;
+
+        this.shotsHome = 0;
+        this.shotsAway = 0;
+        this.passesHome = 0;
+        this.passesAway = 0;
+
+        this.ball = { x: 0, y: 0, targetX: 0, targetY: 0, speed: 0, holder: null };
+        this.playersHome = [];
+        this.playersAway = [];
+      }
+
+      initCanvas() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = Math.max(rect.height, 460);
+        this.resetPositions();
+      }
+
+      resetPositions() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        this.playersHome = [
+          { role: 'GK', x: w * 0.05, y: h * 0.5, color: '#ef4444' },
+          { role: 'CB', x: w * 0.20, y: h * 0.35, color: '#ef4444' },
+          { role: 'CB', x: w * 0.20, y: h * 0.65, color: '#ef4444' },
+          { role: 'CM', x: w * 0.38, y: h * 0.50, color: '#ef4444' },
+          { role: 'ST', x: w * 0.45, y: h * 0.50, color: '#ef4444' }
+        ];
+
+        this.playersAway = [
+          { role: 'GK', x: w * 0.95, y: h * 0.5, color: '#38bdf8' },
+          { role: 'CB', x: w * 0.80, y: h * 0.35, color: '#38bdf8' },
+          { role: 'CB', x: w * 0.80, y: h * 0.65, color: '#38bdf8' },
+          { role: 'CM', x: w * 0.62, y: h * 0.50, color: '#38bdf8' },
+          { role: 'ST', x: w * 0.55, y: h * 0.50, color: '#38bdf8' }
+        ];
+
+        this.ball = {
+          x: w / 2, y: h / 2,
+          targetX: w / 2, targetY: h / 2,
+          speed: 0, holder: this.playersHome[3]
+        };
+      }
+
+      logCommentary(msg) {
+        const feed = document.getElementById('match-commentary');
+        if (!feed) return;
+        const p = document.createElement('p');
+        const min = String(Math.floor(this.timer / 60)).padStart(2, '0');
+        const sec = String(Math.floor(this.timer % 60)).padStart(2, '0');
+        p.innerHTML = `<span class="text-efootball-cyan">[${min}:${sec}]</span> ${msg}`;
+        feed.appendChild(p);
+        feed.scrollTop = feed.scrollHeight;
+      }
+
+      update() {
+        if (!this.isRunning) return;
+
+        this.timer += (0.1 * this.speed);
+        const minStr = String(Math.floor(this.timer / 60)).padStart(2, '0');
+        const secStr = String(Math.floor(this.timer % 60)).padStart(2, '0');
+        document.getElementById('match-clock').textContent = `${minStr}:${secStr}`;
+
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        // Ball Possession Logic
+        if (this.ball.holder) {
+          this.ball.x = this.ball.holder.x + 6;
+          this.ball.y = this.ball.holder.y;
+
+          if (Math.random() < 0.03 * this.speed) {
+            const isHome = this.playersHome.includes(this.ball.holder);
+            if (isHome) this.passesHome++; else this.passesAway++;
+
+            soundEngine.playKick();
+
+            // Shoot or Pass Choice
+            const distToGoal = Math.abs(this.ball.holder.x - (isHome ? w : 0));
+            if (distToGoal < w * 0.25) {
+              // Shoot!
+              if (isHome) this.shotsHome++; else this.shotsAway++;
+              this.logCommentary(`<b>${isHome ? 'DREAM XI' : 'KONAMI STARS'}</b> releases a STUNNING SHOOT on goal!`);
+
+              this.ball.targetX = isHome ? w - 10 : 10;
+              this.ball.targetY = h / 2 + (Math.random() - 0.5) * 60;
+              this.ball.speed = 10;
+              this.ball.holder = null;
+            } else {
+              // Pass to teammate
+              const team = isHome ? this.playersHome : this.playersAway;
+              const target = team[Math.floor(Math.random() * team.length)];
+              this.ball.targetX = target.x;
+              this.ball.targetY = target.y;
+              this.ball.speed = 7;
+              this.ball.holder = null;
+            }
+          }
+        } else {
+          // Ball rolling trajectory
+          const dx = this.ball.targetX - this.ball.x;
+          const dy = this.ball.targetY - this.ball.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist > 4) {
+            this.ball.x += (dx / dist) * this.ball.speed;
+            this.ball.y += (dy / dist) * this.ball.speed;
+          } else {
+            // Find closest player to collect ball
+            let closest = null;
+            let minDist = 9999;
+            [...this.playersHome, ...this.playersAway].forEach(p => {
+              const d = Math.hypot(p.x - this.ball.x, p.y - this.ball.y);
+              if (d < minDist) { minDist = d; closest = p; }
+            });
+            if (closest) this.ball.holder = closest;
+          }
+
+          // Goal Check
+          if (this.ball.x > w - 15 && Math.abs(this.ball.y - h / 2) < 45) {
+            this.scoreHome++;
+            soundEngine.playGoalCheer();
+            document.getElementById('match-score-home').textContent = this.scoreHome;
+            this.logCommentary(`<b class="text-efootball-gold">GOALLL! BEAUTIFUL FINISH BY DREAM XI!</b>`);
+            this.resetPositions();
+          } else if (this.ball.x < 15 && Math.abs(this.ball.y - h / 2) < 45) {
+            this.scoreAway++;
+            soundEngine.playGoalCheer();
+            document.getElementById('match-score-away').textContent = this.scoreAway;
+            this.logCommentary(`<b class="text-efootball-cyan">GOALLL! KONAMI STARS EQUALIZE!</b>`);
+            this.resetPositions();
+          }
+        }
+
+        // Update stats DOM
+        document.getElementById('stat-shots').textContent = `${this.shotsHome} - ${this.shotsAway}`;
+        document.getElementById('stat-passes').textContent = `${this.passesHome} - ${this.passesAway}`;
+      }
+
+      draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Pitch Turf
+        this.ctx.fillStyle = '#0a2318';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Pitch Markings
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(15, 15, this.canvas.width - 30, this.canvas.height - 30);
+
+        // Halfway
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.canvas.width / 2, 15);
+        this.ctx.lineTo(this.canvas.width / 2, this.canvas.height - 15);
+        this.ctx.arc(this.canvas.width / 2, this.canvas.height / 2, 45, 0, Math.PI * 2);
+        this.ctx.stroke();
+
+        // Draw Players
+        const drawGroup = (group) => {
+          group.forEach(p => {
+            this.ctx.fillStyle = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 1.5;
+            this.ctx.stroke();
+
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = 'bold 8px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(p.role, p.x, p.y + 3);
+          });
+        };
+
+        drawGroup(this.playersHome);
+        drawGroup(this.playersAway);
+
+        // Draw Ball
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(this.ball.x, this.ball.y, 5, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#000';
+        this.ctx.stroke();
+      }
+
+      loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
+      }
+    }
+
+    const matchEngine = new LiveMatchEngine();
+
+    function toggleMatchPlay() {
+      matchEngine.isRunning = !matchEngine.isRunning;
+      const btn = document.getElementById('btn-match-play');
+      if (matchEngine.isRunning) {
+        btn.textContent = "⏸ PAUSE MATCH";
+        soundEngine.playWhistle();
+        matchEngine.logCommentary("Match underway!");
+      } else {
+        btn.textContent = "▶ RESUME MATCH";
+      }
+    }
+
+    function setSpeed(sp) {
+      matchEngine.speed = sp;
+      [1, 2, 4].forEach(s => {
+        document.getElementById(`btn-speed-${s}`).className = s === sp ? "px-2 py-0.5 text-xs font-mono bg-efootball-cyan text-black rounded font-bold" : "px-2 py-0.5 text-xs font-mono bg-slate-800 text-slate-400 rounded hover:text-white";
+      });
+    }
+
+    function triggerTacticalIntervention() {
+      soundEngine.playKick();
+      matchEngine.logCommentary(`<b class="text-yellow-400">⚡ STUNNING SHOOT COMMAND ISSUED!</b>`);
+    }
+
+    function resetMatchEngine() {
+      matchEngine.isRunning = false;
+      matchEngine.timer = 0;
+      matchEngine.scoreHome = 0;
+      matchEngine.scoreAway = 0;
+      document.getElementById('match-score-home').textContent = "0";
+      document.getElementById('match-score-away').textContent = "0";
+      document.getElementById('match-clock').textContent = "00:00";
+      document.getElementById('btn-match-play').textContent = "▶ START KICKOFF";
+      matchEngine.resetPositions();
+    }
+
+    /* ==========================================
+       5. FREEHAND TACTICAL DRAWING BOARD
+       ========================================== */
+    class TacticalDrawingBoard {
+      constructor() {
+        this.canvas = document.getElementById('drawingCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.isDrawing = false;
+        this.color = '#ffd700';
+
+        this.setupEvents();
+      }
+
+      initCanvas() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = Math.max(rect.height, 400);
+        this.clear();
+      }
+
+      setupEvents() {
+        const getPos = (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          return { x: clientX - rect.left, y: clientY - rect.top };
+        };
+
+        const start = (e) => {
+          this.isDrawing = true;
+          const pos = getPos(e);
+          this.ctx.beginPath();
+          this.ctx.moveTo(pos.x, pos.y);
+        };
+
+        const move = (e) => {
+          if (!this.isDrawing) return;
+          const pos = getPos(e);
+          this.ctx.strokeStyle = this.color;
+          this.ctx.lineWidth = 3;
+          this.ctx.lineCap = 'round';
+          this.ctx.lineTo(pos.x, pos.y);
+          this.ctx.stroke();
+        };
+
+        const stop = () => { this.isDrawing = false; };
+
+        this.canvas.addEventListener('mousedown', start);
+        this.canvas.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', stop);
+
+        this.canvas.addEventListener('touchstart', start);
+        this.canvas.addEventListener('touchmove', move);
+        window.addEventListener('touchend', stop);
+      }
+
+      clear() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Pitch grid background
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(10, 10, this.canvas.width - 20, this.canvas.height - 20);
+      }
+    }
+
+    const tacticalBoard = new TacticalDrawingBoard();
+
+    function setDrawColor(col) { tacticalBoard.color = col; }
+    function clearDrawBoard() { tacticalBoard.clear(); }
+
+    // On Load Initialization
+    window.onload = function() {
+      renderPitchSquad();
+      inspectPlayer(playerDatabase[0]);
+
+      matchEngine.initCanvas();
+      matchEngine.loop();
+    };
+  </script>
+</body>
+</html>
+```
